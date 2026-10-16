@@ -5,8 +5,9 @@ extends Node2D
 const Grid = preload("res://src/core/isometric_grid.gd")
 const Catalog = preload("res://src/city/building_catalog.gd")
 const Art = preload("res://src/presentation/town_art.gd")
+const Ground = preload("res://src/presentation/town_ground.gd")
+const Residents = preload("res://src/presentation/resident_sprites.gd")
 const BUILDINGS: Texture2D = preload("res://assets/generated/buildings.png")
-const CITIZENS: Texture2D = preload("res://assets/generated/citizens-walk-v2.png")
 const NATURE: Texture2D = preload("res://assets/generated/nature.png")
 var sim: RefCounted
 var selected_building: int = -1
@@ -23,10 +24,9 @@ var walk_cycles: Dictionary = {}
 
 func _ready() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	terrain = Node2D.new()
+	terrain = Ground.new()
 	terrain.show_behind_parent = true
 	add_child(terrain)
-	terrain.draw.connect(func() -> void: _draw_terrain(terrain))
 	var random := RandomNumberGenerator.new()
 	random.seed = 517
 	for x in range(2, 30):
@@ -81,72 +81,9 @@ func _draw() -> void:
 				draw_colored_polygon(tile_polygon(hover_cell + Vector2i(dx, dy)), tint)
 		var preview := {"cell": hover_cell, "size": definition.size, "kind": tool, "id": sim.next_id}
 		_draw_building_art(preview, Color(1, 1, 1, 0.55))
-		draw_colored_polygon(tile_polygon(hover_cell + Vector2i(0, definition.size), 0.8), Color(0.9, 0.77, 0.38, 0.8))
+		draw_colored_polygon(tile_polygon(hover_cell + Vector2i(definition.size - 1, definition.size), 0.8), Color(0.9, 0.77, 0.38, 0.8))
 	elif tool in ["road", "demolish"] and hover_cell.x >= 0:
 		draw_colored_polygon(tile_polygon(hover_cell), Color(0.85, 0.72, 0.42, 0.6) if tool == "road" else Color(0.90, 0.32, 0.24, 0.5))
-
-func _draw_terrain(canvas: Node2D) -> void:
-	if sim == null:
-		return
-	for sum_cell in range(64):
-		for x in range(32):
-			var y := sum_cell - x
-			if y < 0 or y >= 32:
-				continue
-			var cell := Vector2i(x, y)
-			var noise_value: float = sin(x * 0.32) * cos(y * 0.37) * 0.018 + sin(x * 9.1 + y * 7.7) * 0.002
-			var edge := x < 2 or y < 2 or x > 29 or y > 29
-			var base := Color(0.35 + noise_value, 0.45 + noise_value, 0.28 + noise_value) if not edge else Color(0.25, 0.36, 0.24)
-			canvas.draw_colored_polygon(tile_polygon(cell), base)
-			# Tiny vegetation marks add texture without making a visible tile grid.
-			if (x * 17 + y * 13) % 3 == 0:
-				var point := Grid.grid_to_screen(cell) + Vector2(sin(x * 3.7) * 30, cos(y * 2.4) * 14)
-				canvas.draw_line(point, point + Vector2(2, -4), Color(0.49, 0.56, 0.32, 0.5), 1.0)
-			if show_grid:
-				var polygon := tile_polygon(cell)
-				polygon.append(polygon[0])
-				canvas.draw_polyline(polygon, Color(0.75, 0.79, 0.58, 0.14), 1.0)
-	for cell in sim.roads:
-		var point := road_point(cell)
-		var width := road_width(cell)
-		canvas.draw_circle(point, width * 0.5 + 2, Color(0.39, 0.37, 0.26, 0.6))
-		for direction in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-			if sim.roads.has(cell + direction):
-				var end := (point + road_point(cell + direction)) * 0.5
-				canvas.draw_line(point, end, Color(0.39, 0.37, 0.26, 0.6), width + 4, true)
-	for cell in sim.roads:
-		var point := road_point(cell)
-		var width := road_width(cell)
-		canvas.draw_circle(point, width * 0.5, Color(0.62, 0.56, 0.41))
-		for direction in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-			if sim.roads.has(cell + direction):
-				canvas.draw_line(point, (point + road_point(cell + direction)) * 0.5, Color(0.62, 0.56, 0.41), width, true)
-		for i in range(3):
-			var offset := Vector2(sin(cell.x * 12.0 + i * 6.7) * 8, cos(cell.y * 3.1 + i) * 4)
-			canvas.draw_line(point + offset, point + offset + Vector2(3, 1), Color(0.42, 0.39, 0.29, 0.28), 1.0)
-	if has_village_square():
-		for x in range(15, 18):
-			for y in range(14, 17):
-				var cell := Vector2i(x, y)
-				canvas.draw_colored_polygon(tile_polygon(cell), Color(0.43, 0.43, 0.36))
-				for i in range(3):
-					for j in range(3):
-						var center := project(Vector2(cell) + Vector2(float(i - 1) / 3, float(j - 1) / 3))
-						var shade := sin(x * 17 + y * 31 + i * 4 + j) * 0.035
-						canvas.draw_colored_polygon(PackedVector2Array([center + Vector2(-19, 0), center + Vector2(0, -9), center + Vector2(19, 0), center + Vector2(0, 9)]), Color(0.61 + shade, 0.59 + shade, 0.49 + shade))
-	# Short paths meet the visible doorway, bridging art pivots and logical entrances.
-	for building in sim.buildings:
-		if sim.roads.has(building.entry):
-			var entry := road_point(building.entry)
-			var door := building_door(building)
-			canvas.draw_line(entry, door, Color(0.43, 0.40, 0.29), 14, true)
-			canvas.draw_line(entry, door, Color(0.63, 0.58, 0.44), 10, true)
-
-func road_point(cell: Vector2i) -> Vector2:
-	return Grid.grid_to_screen(cell) + Vector2(sin(cell.x * 0.8 + cell.y) * 1.6, cos(cell.y * 1.1 + cell.x) * 0.8)
-
-func road_width(cell: Vector2i) -> float:
-	return 28.0 if (cell.y == 15 and cell.x >= 10 and cell.x <= 22) or (cell.x == 16 and cell.y >= 14 and cell.y <= 19) else 18.0
 
 func _update_cache() -> void:
 	var key := "%s:%d:%d:%d:%d:%s" % [sim.get_instance_id(), sim.next_id, sim.road_revision, sim.appearance_revision, sim.buildings.size(), show_grid]
@@ -157,7 +94,7 @@ func _update_cache() -> void:
 	for item in decor:
 		if _decor_visible(item.cell):
 			decor_cache.append({"depth": Grid.grid_to_screen(item.cell).y, "type": "nature", "data": item})
-	terrain.queue_redraw()
+	terrain.refresh(sim, self)
 
 func update_visuals(delta: float) -> void:
 	for c in sim.citizens:
@@ -184,7 +121,7 @@ func citizen_position(c: Dictionary) -> Vector2:
 
 func building_door(b: Dictionary) -> Vector2:
 	var rect := building_rect(b)
-	var uv: Vector2 = {"keep": Vector2(0.42, 0.87), "house": Vector2(0.34, 0.88), "warehouse": Vector2(0.31, 0.78), "woodcutter": Vector2(0.41, 0.80), "sawmill": Vector2(0.49, 0.84), "farm": Vector2(0.60, 0.76)}[b.kind]
+	var uv: Vector2 = {"keep": Vector2(0.42, 0.87), "house": Vector2(0.34, 0.88), "warehouse": Vector2(0.31, 0.78), "woodcutter": Vector2(0.41, 0.80), "sawmill": Vector2(0.49, 0.84), "farm": Vector2(0.25, 0.90)}[b.kind]
 	return rect.position + rect.size * uv
 
 func has_village_square() -> bool:
@@ -254,57 +191,72 @@ func _draw_citizen(c: Dictionary) -> void:
 	var moving: bool = not c.route.is_empty()
 	var working: bool = not moving and c.state in ["working", "constructing"]
 	var direction: Vector2 = c.direction
+	var b: Dictionary = sim.by_id(c.workplace)
+	if working and not b.is_empty():
+		direction = Vector2(b.cell) + Vector2.ONE * float(b.size) * 0.5 - Vector2(c.pos)
 	var row: int = 0 if direction.x >= absf(direction.y) else (3 if -direction.x >= absf(direction.y) else (1 if direction.y > 0 else 2))
-	var frame_index: int = int(walk_cycles.get(c.id, 0.0) * 6.0) % 6 if moving else 1
-	var frame: Dictionary
-	var texture: Texture2D = Art.WALK
-	var scale_factor := 0.185
-	if working:
-		var b: Dictionary = sim.by_id(c.workplace)
-		var profession: int = {"woodcutter": 0, "sawmill": 1, "farm": 2}.get(b.get("kind", ""), 1)
-		frame_index = int(c.phase * 3.5) % 4
-		frame = Art.animation_frame(true, profession, frame_index)
-		texture = Art.WORK
-		scale_factor = 0.145
-	else:
-		frame = Art.animation_frame(false, row, frame_index)
-	var region := Art.frame_region(frame)
-	var pivot := Vector2(frame.pivot[0], frame.pivot[1])
-	# Feet remain anchored even when poses have different transparent margins.
+	var action := "idle"
+	if moving:
+		action = "carry" if not c.cargo.is_empty() else ("run" if c.state == "fetch_materials" else "walk")
+	elif working:
+		action = "chop" if b.get("kind", "") == "woodcutter" else "work"
+	elif c.state == "resting":
+		action = {"wave": "wave", "chat": "wave", "look": "work"}.get(c.get("activity", "rest"), "idle")
+	var frame: int = int(walk_cycles.get(c.id, 0.0) * Residents.FRAMES) % Residents.FRAMES if moving else int(c.phase * 6.0) % Residents.FRAMES
+	var profile: int = Residents.appearance(c)
+	var scale_factor := 0.67
+	var region := Residents.region(action, row, frame)
+	var pivot := Residents.pivot()
+	var hands := Residents.hand_points(profile, action, row, frame)
+	var cargo_point := p + Vector2(7, -20)
+	if hands.size() == 2:
+		cargo_point = p + ((hands[0] + hands[1]) * 0.5 - pivot) * scale_factor
 	draw_set_transform(p, 0, Vector2(1, 0.38))
 	draw_circle(Vector2.ZERO, 8, Color(0.12, 0.17, 0.11, 0.20))
 	draw_set_transform(Vector2.ZERO)
 	if c.id == selected_citizen:
 		draw_arc(p, 15, 0, TAU, 24, Color(0.96, 0.82, 0.47), 2.0)
 	if not c.cargo.is_empty() and row >= 2:
-		_draw_cargo(c, p, row)
-	var tint := Color(1.0, 0.98, 0.93) if int(c.id) % 3 == 0 else (Color(0.91, 0.97, 1.0) if int(c.id) % 3 == 1 else Color.WHITE)
-	draw_texture_rect_region(texture, Rect2(p - pivot * scale_factor, region.size * scale_factor), region, tint)
+		_draw_cargo(c, cargo_point)
+	draw_texture_rect_region(Residents.TEXTURES[profile], Rect2(p - pivot * scale_factor, Residents.CELL * scale_factor), region)
 	if not c.cargo.is_empty() and row < 2:
-		_draw_cargo(c, p, row)
-	if working and frame_index == 2:
-		for i in range(3):
-			var life: float = fmod(c.phase * 3.5, 1.0)
-			var speck := p + Vector2(12 + i * 3 + life * 7, -6 - sin(life * PI) * 6 + i)
-			draw_circle(speck, 0.8, Color(0.80, 0.68, 0.40, (1 - life) * 0.6))
+		_draw_cargo(c, cargo_point)
+	if working and hands.size() == 2:
+		_draw_work_tool(b.get("kind", ""), p + (hands[0] - pivot) * scale_factor, p + (hands[1] - pivot) * scale_factor)
 
-func _draw_cargo(c: Dictionary, p: Vector2, row: int) -> void:
-	var offset := Vector2(8 if row in [0, 2] else -9, -19)
+func _draw_work_tool(kind: String, left: Vector2, right: Vector2) -> void:
+	if kind == "woodcutter":
+		var axis := (right - left).normalized()
+		if axis.length_squared() < 0.1:
+			axis = Vector2(0, -1)
+		var tip := right + axis * 11
+		var normal := Vector2(-axis.y, axis.x)
+		draw_line(left - axis * 4, tip, Color(0.46, 0.29, 0.13), 2)
+		draw_colored_polygon(PackedVector2Array([tip - axis * 3, tip + axis * 2 + normal * 5, tip + axis * 3 - normal * 4]), Color(0.65, 0.68, 0.62))
+	elif kind == "farm":
+		var end := right + Vector2(8, 15)
+		draw_line(left, end, Color(0.47, 0.32, 0.17), 2)
+		draw_line(end - Vector2(3, 0), end + Vector2(3, 1), Color(0.59, 0.63, 0.57), 3)
+	else:
+		draw_line(left, right, Color(0.68, 0.69, 0.59), 3)
+		draw_circle(left, 1.5, Color(0.41, 0.27, 0.13))
+		draw_circle(right, 1.5, Color(0.41, 0.27, 0.13))
+
+func _draw_cargo(c: Dictionary, anchor: Vector2) -> void:
 	var resource: String = c.cargo.keys()[0]
 	if resource == "wood":
 		for i in range(3):
-			var point := p + offset + Vector2(0, i * 2.5)
+			var point := anchor + Vector2(0, i * 2.5)
 			draw_line(point - Vector2(7, 2), point + Vector2(6, 0), Color(0.38, 0.25, 0.12), 4.5)
 			draw_circle(point + Vector2(6, 0), 2.2, Color(0.71, 0.53, 0.29))
 	elif resource == "planks":
 		for i in range(3):
-			var point := p + offset + Vector2(0, i * 2.5)
+			var point := anchor + Vector2(0, i * 2.5)
 			draw_line(point - Vector2(8, 2), point + Vector2(8, 0), Color(0.77, 0.58, 0.31), 2.0)
 	else:
-		var center := p + offset
-		draw_colored_polygon(PackedVector2Array([center + Vector2(-8, -2), center + Vector2(8, -2), center + Vector2(5, 8), center + Vector2(-5, 8)]), Color(0.59, 0.40, 0.21))
+		draw_colored_polygon(PackedVector2Array([anchor + Vector2(-8, -2), anchor + Vector2(8, -2), anchor + Vector2(5, 8), anchor + Vector2(-5, 8)]), Color(0.59, 0.40, 0.21))
 		for i in range(5):
-			draw_circle(center + Vector2(i * 2.6 - 5, -3), 2.0, Color(0.86, 0.72, 0.36))
+			draw_circle(anchor + Vector2(i * 2.6 - 5, -3), 2.0, Color(0.86, 0.72, 0.36))
 
 func _draw_atlas(texture: Texture2D, index: int, grid: Vector2i, destination: Rect2, modulate_color: Color = Color.WHITE) -> void:
 	var cell := Vector2(texture.get_size()) / Vector2(grid)

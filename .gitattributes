@@ -1,2 +1,6 @@
 # Normalize EOL for all files that Git considers text files.
 * text=auto eol=lf
+
+# Keep downloaded rig data out of source reviews.
+assets/third_party/quaternius/*.gltf -diff linguist-vendored
+assets/baked/residents/atlas.json linguist-generated
