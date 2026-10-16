@@ -24,6 +24,8 @@ var accumulator: float = 0.0
 var meal_timer: float = 0.0
 var astar := AStarGrid2D.new()
 var navigation_dirty: bool = true
+var layout_version: int = 2
+var appearance_revision: int = 0
 
 func start_new() -> void:
 	buildings.clear()
@@ -36,21 +38,30 @@ func start_new() -> void:
 	meal_timer = 0.0
 	accumulator = 0.0
 	speed = 1.0
+	layout_version = 2
 	rng.seed = seed_value
-	for x in range(5, 27):
+	# An inhabited square, short streets and narrow service lanes, not a giant cross.
+	for x in range(7, 22):
 		roads[Vector2i(x, 15)] = true
-	for y in range(7, 25):
+	for y in range(14, 20):
 		roads[Vector2i(16, y)] = true
-	for x in range(10, 23):
-		roads[Vector2i(x, 20)] = true
-	for x in range(10, 21):
+	for x in range(11, 17):
 		roads[Vector2i(x, 18)] = true
-	for cell in [Vector2i(13, 13), Vector2i(13, 14), Vector2i(14, 13), Vector2i(14, 14), Vector2i(17, 14), Vector2i(7, 14), Vector2i(21, 14), Vector2i(21, 19)]:
+	for y in range(11, 16):
+		roads[Vector2i(19, y)] = true
+	roads[Vector2i(18, 11)] = true
+	for x in range(16, 22):
+		roads[Vector2i(x, 19)] = true
+	for x in range(15, 18):
+		for y in range(14, 17):
+			roads[Vector2i(x, y)] = true
+	roads.erase(Vector2i(16, 15)) # The well is a decorative landmark; traffic goes around it.
+	for cell in [Vector2i(13, 13), Vector2i(13, 14), Vector2i(14, 14), Vector2i(13, 16), Vector2i(13, 17), Vector2i(17, 14), Vector2i(7, 14), Vector2i(21, 14), Vector2i(21, 19)]:
 		roads[cell] = true
 	_add_building("keep", Vector2i(13, 10), true)
 	_add_building("warehouse", Vector2i(17, 12), true)
 	_add_building("house", Vector2i(11, 16), true)
-	_add_building("house", Vector2i(18, 16), true)
+	_add_building("house", Vector2i(18, 9), true)
 	_add_building("woodcutter", Vector2i(7, 12), true)
 	_add_building("sawmill", Vector2i(21, 12), true)
 	_add_building("farm", Vector2i(21, 17), true)
@@ -62,7 +73,7 @@ func start_new() -> void:
 	for i in range(20):
 		var home_id: int = 3 if i < 10 else 4
 		citizens.append({"id": i + 1, "name": names[i], "home": home_id, "workplace": -1,
-			"pos": Vector2(14 + i % 5, 15), "direction": Vector2(1, 0), "state": "idle",
+			"pos": Vector2(14 + i % 3, 18), "direction": Vector2(1, 0), "state": "idle",
 			"route": [], "target": Vector2i(16, 15), "resume": "idle", "timer": float(i) * 0.3,
 			"cargo": {}, "cargo_role": "", "phase": float(i) * 0.5})
 	navigation_dirty = true
@@ -184,6 +195,15 @@ func demolish(id: int) -> bool:
 		if c.home == id:
 			c.home = -1
 	message = "建筑已拆除；未消耗的建材已退还，途中材料由居民运回。"
+	return true
+
+func cycle_house_style(id: int) -> bool:
+	var b := by_id(id)
+	if b.is_empty() or b.kind != "house":
+		return false
+	b.variant = (int(b.get("variant", int(b.id) % 3)) + 1) % 3
+	appearance_revision += 1
+	message = "住宅外观已更新，容量和生产规则不变。"
 	return true
 
 func upgrade_keep() -> bool:
@@ -335,7 +355,8 @@ func _step_citizen(c: Dictionary, delta: float) -> void:
 		var offset: Vector2 = waypoint - c.pos
 		if offset.length_squared() > 0.001:
 			c.direction = offset.normalized()
-		c.pos = Vector2(c.pos).move_toward(waypoint, delta * 1.45)
+		var walking_speed := 1.05 if c.cargo.is_empty() else 0.86
+		c.pos = Vector2(c.pos).move_toward(waypoint, delta * walking_speed)
 		if Vector2(c.pos).distance_to(waypoint) < 0.005:
 			c.route.pop_front()
 			if c.route.is_empty():
@@ -458,7 +479,7 @@ func citizen_status(c: Dictionary) -> String:
 		"working": "工作中", "delivering": "运送产品入仓", "returning": "运回剩余材料", "blocked": "道路中断 · 等待恢复"}.get(c.state, c.state)
 
 func export_state() -> Dictionary:
-	return {"schema_version": SCHEMA, "time": time, "seed": seed_value, "rng_state": str(rng.state),
+	return {"schema_version": SCHEMA, "layout_version": layout_version, "time": time, "seed": seed_value, "rng_state": str(rng.state),
 		"next_id": next_id, "deliveries": deliveries, "meal_timer": meal_timer,
 		"inventory": inventory.duplicate(true), "buildings": _encode(buildings), "citizens": _encode(citizens),
 		"roads": _encode(roads.keys())}
@@ -560,6 +581,7 @@ func import_state(data: Dictionary) -> bool:
 	inventory = _decode(data.inventory)
 	time = float(data.time)
 	seed_value = int(data.seed)
+	layout_version = int(data.get("layout_version", 1))
 	rng.seed = seed_value
 	rng.state = int(data.rng_state)
 	next_id = int(data.next_id)

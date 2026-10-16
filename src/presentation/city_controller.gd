@@ -3,6 +3,7 @@ extends Node2D
 const Simulation = preload("res://src/city/city_simulation.gd")
 const Save = preload("res://src/city/city_save.gd")
 const View = preload("res://src/presentation/city_view.gd")
+const Art = preload("res://src/presentation/town_art.gd")
 const Catalog = preload("res://src/city/building_catalog.gd")
 const Grid = preload("res://src/core/isometric_grid.gd")
 const BG := Color("182d28")
@@ -27,6 +28,7 @@ var inspect_status: Label
 var connect_button: Button
 var remove_button: Button
 var upgrade_button: Button
+var style_button: Button
 var toast: Label
 var time_label: Label
 var save_label: Label
@@ -58,9 +60,12 @@ func _ready() -> void:
 		if argument == "--demo":
 			start_demo = true
 	if start_demo:
-		for i in range(800):
+		var demo_house: int = sim.place_building("house", Vector2i(12, 20))
+		if demo_house != -1:
+			sim.connect_building(demo_house)
+		for i in range(1200):
 			sim.update(0.1)
-		world.selected_building = 6
+		world.selected_building = demo_house
 	_refresh_ui()
 	capture_started_ms = Time.get_ticks_msec()
 
@@ -206,6 +211,8 @@ func _create_inspector() -> void:
 	inspect_info.custom_minimum_size.x = 230
 	inspect_info.add_theme_constant_override("line_spacing", 6)
 	column.add_child(inspect_info)
+	style_button = _button("切换住宅外观", _cycle_house_style)
+	column.add_child(style_button)
 	connect_button = _button("接通入口道路", _connect_selected)
 	column.add_child(connect_button)
 	upgrade_button = _button("升级领主府 · 40 木板", _upgrade_selected)
@@ -275,6 +282,8 @@ func _create_dock() -> void:
 	column.add_child(save_label)
 
 func _atlas_texture(index: int) -> AtlasTexture:
+	if index == 1:
+		return Art.building_texture("house", 0)
 	var texture := AtlasTexture.new()
 	texture.atlas = View.BUILDINGS
 	texture.region = Rect2(Vector2(index % 3, index / 3) * 512.0, Vector2(512, 512))
@@ -388,7 +397,7 @@ func _click_map(screen_position: Vector2) -> void:
 		world.selected_citizen = -1
 		world.selected_building = -1
 		for c in sim.citizens:
-			if world.project(c.pos).distance_to(local_point + Vector2(0, 18)) < 18:
+			if world.citizen_position(c).distance_to(local_point + Vector2(0, 18)) < 18:
 				world.selected_citizen = c.id
 				break
 		if world.selected_citizen == -1:
@@ -412,6 +421,10 @@ func _set_speed(value: float) -> void:
 
 func _show_help() -> void:
 	help_dialog.popup_centered(Vector2i(640, 550))
+
+func _cycle_house_style() -> void:
+	sim.cycle_house_style(world.selected_building)
+	_refresh_ui()
 
 func _connect_selected() -> void:
 	sim.connect_building(world.selected_building)
@@ -441,6 +454,7 @@ func _load() -> void:
 		sim = loaded
 		world.sim = sim
 		world.visual_positions.clear()
+		world.walk_cycles.clear()
 		world.selected_building = -1
 		world.selected_citizen = -1
 	_refresh_ui()
@@ -448,6 +462,7 @@ func _load() -> void:
 func _new_city() -> void:
 	sim.start_new()
 	world.visual_positions.clear()
+	world.walk_cycles.clear()
 	world.selected_building = -1
 	world.selected_citizen = -1
 	_set_tool("select")
@@ -469,22 +484,22 @@ func _refresh_ui() -> void:
 	objectives.text = "%s 铺路连接生产建筑\n%s 完成 5 批货物交付\n%s 新建一座建筑\n%s 积攒木板升级领主府" % ["✓" if sim.connected(sim.by_id(5)) else "○", "✓" if sim.deliveries >= 5 else "○", "✓" if completed > 7 else "○", "✓" if sim.by_id(1).level >= 2 else "○"]
 	toast.text = sim.message
 	var b: Dictionary = sim.by_id(world.selected_building)
+	style_button.visible = not b.is_empty() and b.kind == "house"
 	connect_button.visible = not b.is_empty() and not sim.connected(b)
 	remove_button.visible = not b.is_empty() and b.kind not in ["keep"] and b.id != sim.warehouse().id
 	upgrade_button.visible = not b.is_empty() and b.kind == "keep" and b.level < 2
 	if not b.is_empty():
 		inspect_name.text = Catalog.definition(b.kind).name
-		inspect_image.texture = _atlas_texture(Catalog.definition(b.kind).atlas)
+		inspect_image.texture = Art.building_texture(b.kind, Art.house_variant(b))
 		inspect_status.text = sim.building_status(b)
 		inspect_info.text = Catalog.definition(b.kind).description + "\n\n占地 %d×%d · 入口 (%d, %d)\n等级 %d" % [b.size, b.size, b.entry.x, b.entry.y, b.level]
+		if b.kind == "house":
+			style_button.text = "外观：%s · 切换" % Art.HOUSE_NAMES[Art.house_variant(b)]
 	elif world.selected_citizen != -1:
 		for c in sim.citizens:
 			if c.id == world.selected_citizen:
 				inspect_name.text = c.name
-				var texture := AtlasTexture.new()
-				texture.atlas = View.CITIZENS
-				texture.region = Rect2(Vector2.ZERO, View.CITIZENS.get_size() / 4.0)
-				inspect_image.texture = texture
+				inspect_image.texture = Art.walk_icon()
 				inspect_status.text = sim.citizen_status(c)
 				var workplace: Dictionary = sim.by_id(c.workplace)
 				inspect_info.text = "职业：%s\n携带：%s\n目的地：(%d, %d)\n\n居民实际工作与运输，交付后资源才计入仓库。" % [Catalog.definition(workplace.kind).name if not workplace.is_empty() else "居民 / 建筑工", "空手" if c.cargo.is_empty() else Catalog.cost_text(c.cargo), c.target.x, c.target.y]

@@ -1,0 +1,51 @@
+{
+  "generated_on": "2026-10-16",
+  "generator": "Built-in image_gen",
+  "references": "House atlas uses the project's AI-generated buildings.png as a visual reference; no third-party game assets supplied.",
+  "files": [
+    {
+      "file": "village-houses-v2.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "subjects": [
+        "red-tile cottage",
+        "blue-roof townhouse",
+        "thatched farmhouse",
+        "village well"
+      ],
+      "prompt": "Use case: stylized-concept. Create a NEW production game sprite atlas using the attached image ONLY as visual style reference (not an edit target). Asset: actual transparent PNG, square canvas, precise 2 columns x 2 rows equal square cells. Each cell one fully isolated object centered with 10% transparent margin, no overlaps, identical isometric orthographic camera 30 degree elevation, 2:1 ground plane. Match the reference creamy plaster, warm timber, subtle terracotta/dusty blue, handcrafted softly lit miniature look, simplify excessively busy tiny details, no harsh outlines. TOP LEFT: a modest one-and-half storey medieval European cottage, warm ochre-red tiled roof, cream plaster, exposed brown beams, front door facing camera bottom-left side, small fenced herb garden attached on right. TOP RIGHT: a two-storey narrow medieval townhouse with warm gray stone ground floor, cream upper plaster, dusty slate-blue roof, two little gables, modest hanging shop sign with no letters, a tiny courtyard. BOTTOM LEFT: a low thatched-roof peasant farmhouse, asymmetrical straw roof, limewashed walls, small vegetable patch and wicker fence. BOTTOM RIGHT: small circular village stone water well with timber roof, winding bucket crank, a few flower pots around base; NO terrain tile or square background. House variants all have similar 2x2-tile footprint, similar overall scale, well should be smaller. Gentle warm morning light upper left; readable roof shapes, muted natural colors, ambient contact shadow only immediately around bases. Actual transparent background. No text, no lettering, no labels, no panels, no UI, no grid, no watermark."
+    },
+    {
+      "file": "citizens-walk-v2.png",
+      "size": [
+        1536,
+        1024
+      ],
+      "subjects": [
+        "4 directions, 6 walk poses per direction"
+      ],
+      "prompt": "Use case: stylized-concept. Production sprite animation sheet, exactly SIX columns and FOUR rows, 24 separate full-body sprites of the SAME medieval European villager. Transparent PNG landscape canvas 3:2 aspect. Each equal cell same dimensions and same fixed camera, character size, and foot baseline at 90% of cell height. Each character contained fully inside its cell, at most 70% cell width and 80% cell height. Charming but proportionate miniature painterly 3D game art, small cap, short brown hair, muted sage tunic, ochre belt, brown trousers and boots. No oversized cartoon head. Soft upper-left lighting, simple readable materials, no outline. Isometric camera elevation 30 degrees. Rows: 1 faces southeast (front, walking toward bottom right); 2 faces southwest (front, toward bottom left); 3 faces northeast (back, toward top right); 4 faces northwest (back, toward top left). CRITICAL: every row must show six DISTINCT consecutive walk-cycle poses, not repeated identical standing poses. Columns are 1 left-foot heel strike/front with right foot behind, 2 weight shift passing, 3 right knee lifted forward, 4 right-foot heel strike/front and left foot behind, 5 weight shift passing opposite, 6 left knee lifted forward. Arms swing opposite legs. Very clear alternating left/right leg silhouettes in columns 1 and 4, no floating, no running, no identical duplicate poses. Actual transparent background, no floor or shadows outside feet, no panels, no gridlines, no labels, no text, no watermark, no props. Consistent clothing and identity. Asset intended to be displayed 40 pixels tall in a working medieval town simulation."
+    },
+    {
+      "file": "citizens-work-v2.png",
+      "size": [
+        1448,
+        1086
+      ],
+      "subjects": [
+        "woodcutter axe cycle",
+        "carpenter saw cycle",
+        "farmer hoe cycle"
+      ],
+      "prompt": "Use case: stylized-concept. Transparent production sprite sheet for a medieval village simulator. Exactly FOUR columns by THREE rows, 12 isolated complete full-body human sprites, landscape 4:3 aspect. Same proportionate miniature art as painterly 3D medieval village game, not cartoon, muted earthy clothing and soft daylight. All orthographic isometric camera 30 degree elevation, facing southeast/front right, all feet on same baseline at 90 percent of each equal cell, consistent scale across all cells. Each row depicts one worker with clearly DIFFERENT successive action keyframes. Row 1 woodcutter in brown vest and green sleeves, holding a small axe: column1 axe raised overhead, col2 swing halfway down, col3 axe at low chopping impact in front of waist, col4 returning axe upward. Row 2 carpenter in dusty blue tunic holding a hand saw with both arms: col1 arms extended forward saw horizontal, col2 arms halfway pulled back, col3 arms fully pulled to chest, col4 pushing out. Row 3 farmer in ochre tunic with a long-handled hoe: col1 hoe lifted diagonally, col2 bending to lower hoe, col3 leaning forward hoe touching ground, col4 straightening and pulling hoe upward. No logs, no stumps, no benches, no large scenery: just each person and handheld tool, all fully contained within own cell with generous transparent margins, feet anchored and never cropped. Real clear pose differences and readable tool arcs. No texts, borders, labels or background; actual transparent PNG."
+    }
+  ],
+  "sampling": "sprite-layout-v2.json records regions and foot pivots measured from source alpha masks; PNG originals are unchanged.",
+  "limits": [
+    "AI-drawn poses still require human animation cleanup for production use.",
+    "Four directions only; cargo bundles are drawn by Godot.",
+    "Original atlas assets retained for compatibility and reference."
+  ]
+}
