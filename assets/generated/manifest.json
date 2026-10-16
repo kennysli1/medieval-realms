@@ -1,0 +1,56 @@
+{
+  "generated_on": "2026-10-16",
+  "generator": "Built-in image_gen tool",
+  "provenance": "AI-generated for Medieval Realms; no third-party game screenshots used as input.",
+  "files": [
+    {
+      "file": "buildings.png",
+      "layout": "3 columns × 2 rows",
+      "size": [
+        1536,
+        1024
+      ],
+      "subjects": [
+        "keep",
+        "house",
+        "warehouse",
+        "woodcutter",
+        "sawmill",
+        "farm"
+      ],
+      "prompt": "Use case: stylized-concept. Asset type: production game sprite atlas, transparent PNG. Create a precisely aligned 3 columns by 2 rows sheet of SIX SEPARATE isometric medieval European buildings. Canvas aspect ratio 3:2. Each equal square cell contains exactly ONE isolated complete building centered horizontally, entire silhouette including tiny contact shadow inside its cell, ample transparent margins, no overlapping cells. Row 1 left: small lord's stone keep with two short towers and slate-blue roofs, red pennant. Row 1 middle: cozy cream plaster and timber cottage with terracotta roof. Row 1 right: stone timber warehouse with broad doors, crates and blue roof. Row 2 left: woodcutter lodge with logs and axe chopping block, terracotta roof. Row 2 middle: sawmill carpentry workshop with a simple exposed timber saw bench and stacks of planks, slate roof. Row 2 right: square wheat farm plot with small timber shed, golden grain and fence. ALL exactly same fixed orthographic isometric camera, 2:1 ground diamond (camera elevation 30 degrees), front faces visible, same scale, building ground contact around lower central part of cell. Style warm charming handcrafted miniature medieval town, soft painterly 3D-rendered sprites, crisp readable shapes, subtle material detail, creamy stone, warm wood, muted greens, restrained terracotta and dusty blue. Gentle upper-left daylight. Actual transparent background, no ground square or scene or colored background behind buildings. No text, no letters, no UI, no borders, no watermarks, no grid lines. This is an asset atlas for a playable Godot city simulation, not a poster."
+    },
+    {
+      "file": "citizens.png",
+      "layout": "4 columns × 4 rows, SE/SW/NE/NW rows",
+      "size": [
+        1254,
+        1254
+      ],
+      "subjects": [
+        "four-direction walking peasant, four poses per direction"
+      ],
+      "prompt": "Use case: stylized-concept. Asset type: production sprite animation atlas PNG with actual transparent background. Precisely 4 columns by 4 rows equal square cells on a square canvas. SIXTEEN separate full-body sprites of ONE identical small medieval European peasant man wearing sage green tunic, tan trousers, brown boots, brown cap, brown belt. Warm charming painterly 3D miniature game art matching cream-stone terracotta-roof medieval village assets. Isometric orthographic camera elevation 30 degrees. Each sprite has identical size, center and foot baseline inside its cell, occupies about 65 percent cell height, entire body no cropping. Row 1: FOUR consecutive WALK CYCLE poses facing southeast (toward viewer right). Row 2: FOUR consecutive walk cycle poses facing southwest (toward viewer left). Row 3: FOUR consecutive walk cycle poses facing northeast (away viewer right, see back). Row 4: FOUR consecutive walk cycle poses facing northwest (away viewer left, see back). Alternating feet and hands, small natural walk movements. Empty hands, readable head and arms, slightly big head to read at small game size, consistent identity clothing proportion lighting and scale. Ample fully transparent separation between frames. No scenery, no colored background, no floor, no grid, no text, no labels, no border, no weapons, no props. Only the 16 isolated character sprites. Soft upper-left daylight."
+    },
+    {
+      "file": "nature.png",
+      "layout": "2 columns × 2 rows",
+      "size": [
+        1374,
+        1145
+      ],
+      "subjects": [
+        "oak",
+        "spruce",
+        "rocks",
+        "apple tree"
+      ],
+      "prompt": "Use case: stylized-concept. Production transparent PNG isometric game environment atlas, exactly 2 columns x 2 rows of equal square cells. Each cell one complete isolated object, centered, fully contained with transparent margins. Top left a lush rounded European oak tree with visible brown trunk; top right a tall dense spruce tree; bottom left a small group of mossy gray boulders; bottom right a leafy young apple tree with sparse tiny red apples. Consistent fixed orthographic isometric camera 30 degree elevation, upper left warm soft daylight, painterly detailed handcrafted miniature medieval village art. Muted natural green foliage, readable forms at small game scale, soft contact shadow immediately under each object. Actual transparent background. No terrain squares, no scenery, no text, no gridlines, no labels, no borders."
+    }
+  ],
+  "limitations": [
+    "AI atlas alignment and animation poses need manual production polish.",
+    "Prototype characters share one outfit and four walk directions.",
+    "Textures are sampled with Godot AtlasTexture/draw_texture_rect_region; original alpha preserved."
+  ]
+}

@@ -20,5 +20,7 @@ function Invoke-GodotCheck([string[]]$GodotArgs) {
 }
 Invoke-GodotCheck @('--headless', '--path', $projectRoot, '--editor', '--import', '--quit')
 Invoke-GodotCheck @('--headless', '--path', $projectRoot, '--script', 'res://tests/run_tests.gd')
+Invoke-GodotCheck @('--headless', '--path', $projectRoot, '--script', 'res://tests/run_city_tests.gd')
+Invoke-GodotCheck @('--headless', '--path', $projectRoot, '--script', 'res://tests/run_ui_tests.gd')
 Invoke-GodotCheck @('--headless', '--path', $projectRoot, '--quit-after', '3')
 Write-Host 'All foundation checks passed.'
