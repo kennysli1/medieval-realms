@@ -1,0 +1,12 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Local saves, exports and credentials
+/exports/
+/build/
+*.log
+.env
+.env.*
+!.env.example
+/saves/
