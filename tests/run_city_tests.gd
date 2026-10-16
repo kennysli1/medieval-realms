@@ -115,6 +115,7 @@ func test_road_interruption() -> void:
 
 func test_save_continuity() -> void:
 	var original = fresh()
+	original.cycle_house_style(3)
 	var id: int = original.place_building("house", Vector2i(8, 17))
 	original.connect_building(id)
 	advance(original, 15.0)
@@ -122,6 +123,7 @@ func test_save_continuity() -> void:
 	var loaded = Simulation.new()
 	check(loaded.import_state(json), "JSON round-trip restores game state")
 	check(loaded.inventory == original.inventory, "Inventory preserved")
+	check(loaded.by_id(3).variant == original.by_id(3).variant, "Chosen house appearance survives loading")
 	check(loaded.citizens[0].pos.is_equal_approx(original.citizens[0].pos), "Citizen positions preserved")
 	advance(original, 120.0)
 	advance(loaded, 120.0)
@@ -133,6 +135,11 @@ func test_save_continuity() -> void:
 	check(Save.save_city(loaded, path), "Second save creates backup")
 	check(FileAccess.file_exists(path + ".bak"), "Backup exists")
 	check(Save.load_city(path) != null, "Saved file loads")
+	var legacy: Dictionary = original.export_state()
+	legacy.erase("layout_version")
+	var old_map = Simulation.new()
+	check(old_map.import_state(JSON.parse_string(JSON.stringify(legacy))), "Previous schema-1 saves load without layout version")
+	check(old_map.layout_version == 1 and old_map.roads == original.roads, "Legacy road layout preserved")
 	for suffix in ["", ".bak", ".tmp"]:
 		if FileAccess.file_exists(path + suffix):
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(path + suffix))

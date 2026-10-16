@@ -45,6 +45,9 @@ func _run() -> void:
 		check(scene.connect_button.visible, "Disconnected building offers road connection")
 		scene.connect_button.pressed.emit()
 		check(scene.sim.connected(scene.sim.buildings[-1]), "Inspector connects construction road")
+		var previous_variant: int = scene.sim.buildings[-1].get("variant", int(scene.sim.buildings[-1].id) % 3)
+		scene.style_button.pressed.emit()
+		check(scene.sim.buildings[-1].variant != previous_variant, "Inspector changes chosen house appearance")
 	scene.speed_buttons[4].pressed.emit()
 	check(scene.sim.speed == 4.0, "Speed button updates shared simulation")
 	scene.speed_buttons[0].pressed.emit()
@@ -60,6 +63,29 @@ func _run() -> void:
 		for child in contents.get_children():
 			if child is TextureRect:
 				check(child.size.y >= 40 and child.texture != null, "Asset thumbnail has texture and size: " + kind)
+	# Sample bounds must stay inside each PNG and retain a stable ground pivot.
+	var art = load("res://src/presentation/town_art.gd")
+	var valid_frames := true
+	for working in [false, true]:
+		var texture: Texture2D = art.WORK if working else art.WALK
+		for row in range(3 if working else 4):
+			for column in range(4 if working else 6):
+				var frame: Dictionary = art.animation_frame(working, row, column)
+				var rect: Rect2 = art.frame_region(frame)
+				valid_frames = valid_frames and Rect2(Vector2.ZERO, texture.get_size()).encloses(rect)
+				valid_frames = valid_frames and frame.pivot[0] >= 0 and frame.pivot[0] <= rect.size.x and frame.pivot[1] <= rect.size.y
+	check(valid_frames, "All walk/work frames and feet pivots fit their source atlases")
+	scene._set_speed(1.0)
+	for i in range(30):
+		scene.sim.update(0.1)
+		scene.world.update_visuals(0.1)
+	check(not scene.world.walk_cycles.is_empty(), "Movement drives walking cycles")
+	scene._set_speed(0.0)
+	var paused_positions: Dictionary = scene.world.visual_positions.duplicate()
+	var paused_cycles: Dictionary = scene.world.walk_cycles.duplicate()
+	for i in range(10):
+		scene.world.update_visuals(0.1)
+	check(scene.world.visual_positions == paused_positions and scene.world.walk_cycles == paused_cycles, "Pause freezes visual positions and footsteps")
 	print("City UI checks: %d checks, %d failures" % [checks, failures])
 	scene.queue_free()
 	await process_frame
