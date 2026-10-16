@@ -56,6 +56,13 @@ func _run() -> void:
 	scene.world.selected_building = -1
 	scene._refresh_ui()
 	check(scene.inspect_name.text == "艾伦", "Citizen inspector shows selected resident")
+	var previous_appearance: int = scene.sim.citizens[0].appearance
+	scene.resident_style_button.pressed.emit()
+	check(scene.sim.citizens[0].appearance != previous_appearance, "Resident inspector changes actual model")
+	scene._set_tool("road")
+	var previous_material: String = scene.road_material
+	scene.road_style_button.pressed.emit()
+	check(scene.road_material != previous_material and scene.road_style_button.visible, "Road inspector switches paving material")
 	for kind in scene.tool_buttons:
 		var button: Button = scene.tool_buttons[kind]
 		var contents: VBoxContainer = button.get_child(0)
@@ -75,6 +82,23 @@ func _run() -> void:
 				valid_frames = valid_frames and Rect2(Vector2.ZERO, texture.get_size()).encloses(rect)
 				valid_frames = valid_frames and frame.pivot[0] >= 0 and frame.pivot[0] <= rect.size.x and frame.pivot[1] <= rect.size.y
 	check(valid_frames, "All walk/work frames and feet pivots fit their source atlases")
+	var residents = load("res://src/presentation/resident_sprites.gd")
+	var valid_residents := true
+	var animated := true
+	for profile in range(4):
+		var texture: Texture2D = residents.TEXTURES[profile]
+		var pixels := texture.get_image()
+		valid_residents = valid_residents and texture.get_size() == Vector2(768, 3136)
+		for action in residents.ACTIONS:
+			for direction in range(4):
+				var first: Rect2 = residents.region(action, direction, 0)
+				var last: Rect2 = residents.region(action, direction, 4)
+				valid_residents = valid_residents and Rect2(Vector2.ZERO, texture.get_size()).encloses(last)
+				valid_residents = valid_residents and residents.hand_points(profile, action, direction, 4).size() == 2
+				if action != "idle":
+					animated = animated and pixels.get_region(first).get_data() != pixels.get_region(last).get_data()
+	check(valid_residents, "Four rigged atlases have complete action/direction bounds and projected hand anchors")
+	check(animated, "Action frames contain real pose changes in all four character models")
 	scene._set_speed(1.0)
 	for i in range(30):
 		scene.sim.update(0.1)

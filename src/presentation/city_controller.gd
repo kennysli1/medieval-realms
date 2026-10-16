@@ -4,6 +4,8 @@ const Simulation = preload("res://src/city/city_simulation.gd")
 const Save = preload("res://src/city/city_save.gd")
 const View = preload("res://src/presentation/city_view.gd")
 const Art = preload("res://src/presentation/town_art.gd")
+const Residents = preload("res://src/presentation/resident_sprites.gd")
+const Ground = preload("res://src/presentation/town_ground.gd")
 const Catalog = preload("res://src/city/building_catalog.gd")
 const Grid = preload("res://src/core/isometric_grid.gd")
 const BG := Color("182d28")
@@ -29,12 +31,16 @@ var connect_button: Button
 var remove_button: Button
 var upgrade_button: Button
 var style_button: Button
+var resident_style_button: Button
+var road_style_button: Button
 var toast: Label
 var time_label: Label
 var save_label: Label
 var tool_buttons: Dictionary = {}
 var speed_buttons: Dictionary = {}
 var tool: String = "select"
+var road_material: String = "stone"
+var last_road_cell := Vector2i(-100, -100)
 var zoom: float = 0.68
 var pan := Vector2(0, 0)
 var display_timer: float = 0.0
@@ -213,6 +219,10 @@ func _create_inspector() -> void:
 	column.add_child(inspect_info)
 	style_button = _button("切换住宅外观", _cycle_house_style)
 	column.add_child(style_button)
+	resident_style_button = _button("切换居民形象", _cycle_resident)
+	column.add_child(resident_style_button)
+	road_style_button = _button("路面：石板 · 切换", _cycle_road_material)
+	column.add_child(road_style_button)
 	connect_button = _button("接通入口道路", _connect_selected)
 	column.add_child(connect_button)
 	upgrade_button = _button("升级领主府 · 40 木板", _upgrade_selected)
@@ -340,6 +350,8 @@ func _capture() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
+		if not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			last_road_cell = Vector2i(-100, -100)
 		if event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 			_set_tool("select")
 		elif event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
@@ -355,7 +367,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			pan += event.relative
 			_apply_camera()
 		elif Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and tool == "road":
-			sim.set_road(Grid.screen_to_grid(world.to_local(event.position)), true)
+			var current_cell := Grid.screen_to_grid(world.to_local(event.position))
+			if last_road_cell.x > -50:
+				sim.paint_road_segment(last_road_cell, current_cell, road_material)
+			else:
+				sim.set_road(current_cell, true, road_material)
+			last_road_cell = current_cell
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.ctrl_pressed and event.keycode == KEY_S:
 			_save()
@@ -380,7 +397,8 @@ func _click_map(screen_position: Vector2) -> void:
 	var local_point: Vector2 = world.to_local(screen_position)
 	var cell := Grid.screen_to_grid(local_point)
 	if tool == "road":
-		sim.set_road(cell, true)
+		sim.set_road(cell, true, road_material)
+		last_road_cell = cell
 	elif tool == "demolish":
 		var b := sim.building_at(cell)
 		if not b.is_empty():
@@ -406,6 +424,10 @@ func _click_map(screen_position: Vector2) -> void:
 
 func _set_tool(value: String) -> void:
 	tool = value
+	last_road_cell = Vector2i(-100, -100)
+	if value != "select":
+		world.selected_building = -1
+		world.selected_citizen = -1
 	for key in tool_buttons:
 		tool_buttons[key].set_pressed_no_signal(key == value)
 	if Catalog.DEFINITIONS.has(value):
@@ -414,6 +436,7 @@ func _set_tool(value: String) -> void:
 		sim.message = "按住左键连续铺路；产业入口需连接主仓库。"
 	elif value == "demolish":
 		sim.message = "点击建筑占地拆除，或点击道路移除。未消耗的建材会退回。"
+	_refresh_ui()
 
 func _set_speed(value: float) -> void:
 	sim.speed = value
@@ -421,6 +444,14 @@ func _set_speed(value: float) -> void:
 
 func _show_help() -> void:
 	help_dialog.popup_centered(Vector2i(640, 550))
+
+func _cycle_road_material() -> void:
+	road_material = "dirt" if road_material == "stone" else "stone"
+	_refresh_ui()
+
+func _cycle_resident() -> void:
+	sim.cycle_resident_appearance(world.selected_citizen)
+	_refresh_ui()
 
 func _cycle_house_style() -> void:
 	sim.cycle_house_style(world.selected_building)
@@ -484,6 +515,9 @@ func _refresh_ui() -> void:
 	objectives.text = "%s 铺路连接生产建筑\n%s 完成 5 批货物交付\n%s 新建一座建筑\n%s 积攒木板升级领主府" % ["✓" if sim.connected(sim.by_id(5)) else "○", "✓" if sim.deliveries >= 5 else "○", "✓" if completed > 7 else "○", "✓" if sim.by_id(1).level >= 2 else "○"]
 	toast.text = sim.message
 	var b: Dictionary = sim.by_id(world.selected_building)
+	resident_style_button.visible = world.selected_citizen != -1
+	road_style_button.visible = tool == "road"
+	road_style_button.text = "路面：%s · 切换" % ("石板" if road_material == "stone" else "泥土")
 	style_button.visible = not b.is_empty() and b.kind == "house"
 	connect_button.visible = not b.is_empty() and not sim.connected(b)
 	remove_button.visible = not b.is_empty() and b.kind not in ["keep"] and b.id != sim.warehouse().id
@@ -499,7 +533,8 @@ func _refresh_ui() -> void:
 		for c in sim.citizens:
 			if c.id == world.selected_citizen:
 				inspect_name.text = c.name
-				inspect_image.texture = Art.walk_icon()
+				inspect_image.texture = Residents.icon(c)
+				resident_style_button.text = "形象：%s · 切换" % Residents.NAMES[Residents.appearance(c)]
 				inspect_status.text = sim.citizen_status(c)
 				var workplace: Dictionary = sim.by_id(c.workplace)
 				inspect_info.text = "职业：%s\n携带：%s\n目的地：(%d, %d)\n\n居民实际工作与运输，交付后资源才计入仓库。" % [Catalog.definition(workplace.kind).name if not workplace.is_empty() else "居民 / 建筑工", "空手" if c.cargo.is_empty() else Catalog.cost_text(c.cargo), c.target.x, c.target.y]
@@ -508,3 +543,10 @@ func _refresh_ui() -> void:
 		inspect_image.texture = _atlas_texture(0)
 		inspect_status.text = "你的领地 · 橡木谷"
 		inspect_info.text = "选择建筑查看生产状态，选择居民观察工作与搬运。\n\n下方营建栏可扩建街区。建筑放置后，记得连接黄色入口。\n\n需要帮助时，点击右上角 ?。"
+		if tool == "road":
+			inspect_name.text = "铺设道路"
+			inspect_image.texture = Ground.STONE if road_material == "stone" else Ground.DIRT
+			inspect_status.text = "石板主街" if road_material == "stone" else "泥土支路"
+			inspect_info.text = "按住左键拖动，自动补齐途中的道路格。\n\n可以在石板与泥土之间切换，也可以涂刷已有道路更换路面。\n\n转角、交叉口会自动连接；建筑入口仍需接入主仓库路网。"
+
+	inspector.set_deferred("size", Vector2(276, 0))

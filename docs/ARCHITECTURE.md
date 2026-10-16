@@ -39,7 +39,7 @@
 
 schema=1 顶层含 schema_version、time、seed、rng_state、next_id、deliveries、meal_timer、buildings、roads、citizens、inventory。world/armies 未实现，不写空占位。向量显式编码，RNG 64 位状态用字符串保存；JSON 整数恢复成整型，避免库存类型漂移。加载到临时状态完成校验，再替换当前世界。文件放 user://saves；不要提交真实用户存档。
 
-视觉第二轮增加可选 `layout_version`（缺失时按旧布局1），新游戏为2；住宅可选 `variant` 缺失时由稳定 ID 决定。旧存档仍为 schema=1，加载不改建筑或路网。`appearance_revision` 是不落盘的渲染缓存失效标记。
+视觉第二轮增加可选 `layout_version`（缺失时按旧布局1），新游戏为3；住宅可选 `variant` 缺失时由稳定 ID 决定。旧存档仍为 schema=1，加载不改建筑或路网。`appearance_revision` 是不落盘的渲染缓存失效标记。
 
 ## 官方技术依据
 
@@ -48,3 +48,11 @@ schema=1 顶层含 schema_version、time、seed、rng_state、next_id、deliveri
 - [TileMapLayer 与 Y 排序](https://docs.godotengine.org/en/stable/tutorials/2d/using_tilemaps.html)
 
 链接的 stable 文档随上游变化，实际以仓库固定的 4.7.2 引擎导入和运行结果为准。
+
+## 路面与骨骼烘焙居民（第三轮）
+
+`town_ground.gd` 将路网写入 32×32 ImageTexture，`town_ground.gdshader` 在统一地面坐标计算相邻路段的并集。石板/泥土材质共享连续采样，不按格子重复绘制端帽；门口步道仅连接已通路入口。道路图负责导航，地面材质不改变经济。
+
+`ResidentSprites` 读取本地烘焙图集与双手/脚底锚点；`city_view` 根据任务选择动作，移动按距离推进，暂停不推进。glTF 与 AnimationPlayer 只在烘焙工具中加载，游戏主场景不实例化 3D 模型。
+
+schema=1 新增可选 `road_surfaces` 数组（cell/surface）、居民 `appearance`（0..3）、`activity`（rest/wave/look/chat）。旧存档缺失时用泥土、稳定 ID 对应形象、rest，保留建筑入口与道路坐标。新建建筑使用靠近可见前门的入口，导入旧建筑不重新计算。路面重涂不打断居民路径，实际新增/删除道路才触发导航失效。

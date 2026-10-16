@@ -11,6 +11,7 @@ func _initialize() -> void:
 	test_road_interruption()
 	test_save_continuity()
 	test_corrupt_save()
+	test_road_brush_and_residents()
 	print("City checks: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures > 0 else 0)
 
@@ -137,9 +138,15 @@ func test_save_continuity() -> void:
 	check(Save.load_city(path) != null, "Saved file loads")
 	var legacy: Dictionary = original.export_state()
 	legacy.erase("layout_version")
+	legacy.erase("road_surfaces")
+	for c in legacy.citizens:
+		c.erase("appearance")
+		c.erase("activity")
 	var old_map = Simulation.new()
 	check(old_map.import_state(JSON.parse_string(JSON.stringify(legacy))), "Previous schema-1 saves load without layout version")
 	check(old_map.layout_version == 1 and old_map.roads == original.roads, "Legacy road layout preserved")
+	check(old_map.by_id(3).entry == original.by_id(3).entry, "Legacy entrance coordinates preserved")
+	check(old_map.citizens[0].appearance == 0 and old_map.citizens[0].activity == "rest", "Missing resident metadata gets defaults")
 	for suffix in ["", ".bak", ".tmp"]:
 		if FileAccess.file_exists(path + suffix):
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(path + suffix))
@@ -158,3 +165,49 @@ func test_corrupt_save() -> void:
 	data = sim.export_state()
 	data.buildings[0].erase("entry")
 	check(not Simulation.new().import_state(data), "Incomplete building rejected")
+	data = sim.export_state()
+	data.citizens[0].appearance = {}
+	check(not Simulation.new().import_state(data), "Malformed optional appearance rejected")
+	data = sim.export_state()
+	data.road_surfaces[0].surface = "unknown"
+	check(not Simulation.new().import_state(data), "Unknown road material rejected")
+
+func test_road_brush_and_residents() -> void:
+	var sim = fresh()
+	var isolated := 0
+	var blocks := 0
+	for cell in sim.roads:
+		var degree := 0
+		for delta in Simulation.DIRECTIONS:
+			if sim.roads.has(cell + delta):
+				degree += 1
+		if degree == 0:
+			isolated += 1
+		var at_square: bool = cell.x >= 14 and cell.x <= 17 and cell.y >= 13 and cell.y <= 16
+		if not at_square and sim.roads.has(cell + Vector2i.RIGHT) and sim.roads.has(cell + Vector2i.DOWN) and sim.roads.has(cell + Vector2i.ONE):
+			blocks += 1
+	check(isolated == 0 and blocks == 0, "Initial streets have no isolated tiles or solid 2x2 blocks outside the market square")
+	sim.paint_road_segment(Vector2i(3, 25), Vector2i(9, 25), "stone")
+	var continuous := true
+	for x in range(3, 10):
+		continuous = continuous and sim.roads.has(Vector2i(x, 25)) and sim.road_surface(Vector2i(x, 25)) == "stone"
+	check(continuous, "Fast road drag fills intermediate cells")
+	advance(sim, 2)
+	var paths: Array = []
+	for c in sim.citizens:
+		paths.append(c.route.duplicate())
+	var stock: Dictionary = sim.inventory.duplicate()
+	sim.set_road(Vector2i(3, 25), true, "dirt")
+	var retained: bool = sim.inventory == stock
+	for i in range(sim.citizens.size()):
+		retained = retained and paths[i] == sim.citizens[i].route
+	check(retained, "Resurfacing keeps inventory and ongoing journeys")
+	var c: Dictionary = sim.citizens[0]
+	var job: Dictionary = c.duplicate(true)
+	sim.cycle_resident_appearance(c.id)
+	job.appearance = c.appearance
+	check(job == c, "Changing resident appearance preserves task and cargo")
+	var loaded = Simulation.new()
+	check(loaded.import_state(JSON.parse_string(JSON.stringify(sim.export_state()))), "New visual metadata loads")
+	check(loaded.road_surface(Vector2i(3, 25)) == "dirt" and loaded.road_surface(Vector2i(4, 25)) == "stone", "Painted road materials survive saving")
+	check(loaded.citizens[0].appearance == c.appearance, "Resident model selection survives saving")

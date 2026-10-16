@@ -1,0 +1,35 @@
+{
+  "author": "Quaternius",
+  "license": "CC0 1.0",
+  "sources": [
+    "https://quaternius.com/packs/ultimatemodularcharacters.html",
+    "https://quaternius.com/packs/ultimatemodularwomen.html"
+  ],
+  "retrieved": "2026-10-16",
+  "files": [
+    {
+      "file": "farmer.gltf",
+      "pack": "Ultimate Modular Men",
+      "download": "https://drive.google.com/uc?export=download&id=1B9Dln-oR5Yk6sdsDR3yHCw86LobAN3Zd",
+      "sha256": "46d3e85fa8d848ee479ab8e4672c16724ee4ea51f3af5733705a153937f93555"
+    },
+    {
+      "file": "medieval_woman.gltf",
+      "pack": "Ultimate Modular Women",
+      "download": "https://drive.google.com/uc?export=download&id=17xT8FvSs2oGKVg28vRFf_8nwsM5nF2bG",
+      "sha256": "32c3cd6d4e59bd1f433bc5eeca788b1430399ef15dfd2e0fb4a038a967c0c293"
+    },
+    {
+      "file": "adventurer_man.gltf",
+      "pack": "Ultimate Modular Men",
+      "download": "https://drive.google.com/uc?export=download&id=1fzSq1Rr037f7QkfXPWEAzmbLMNx-FpPA",
+      "sha256": "21f7a61afb6bd6cef6961490c367594e3c2fc01ec1f041662131172ce763063e"
+    },
+    {
+      "file": "adventurer_woman.gltf",
+      "pack": "Ultimate Modular Women",
+      "download": "https://drive.google.com/uc?export=download&id=1uxAFnDp73NO1c16LvHHjAYh1-deMNk5I",
+      "sha256": "65094211e53b49f6a834c617cc056834686fe794a0b515a6b97faa3e1130cc95"
+    }
+  ]
+}

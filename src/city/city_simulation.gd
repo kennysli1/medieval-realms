@@ -11,6 +11,7 @@ const DIRECTIONS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0
 var buildings: Array[Dictionary] = []
 var citizens: Array[Dictionary] = []
 var roads: Dictionary = {}
+var road_surfaces: Dictionary = {}
 var inventory: Dictionary = {"wood": 110, "planks": 24, "food": 90}
 var time: float = 0.0
 var speed: float = 1.0
@@ -24,13 +25,14 @@ var accumulator: float = 0.0
 var meal_timer: float = 0.0
 var astar := AStarGrid2D.new()
 var navigation_dirty: bool = true
-var layout_version: int = 2
+var layout_version: int = 3
 var appearance_revision: int = 0
 
 func start_new() -> void:
 	buildings.clear()
 	citizens.clear()
 	roads.clear()
+	road_surfaces.clear()
 	inventory = {"wood": 110, "planks": 24, "food": 90}
 	time = 0.0
 	next_id = 1
@@ -38,44 +40,42 @@ func start_new() -> void:
 	meal_timer = 0.0
 	accumulator = 0.0
 	speed = 1.0
-	layout_version = 2
+	layout_version = 3
 	rng.seed = seed_value
-	# An inhabited square, short streets and narrow service lanes, not a giant cross.
-	for x in range(7, 22):
+	# Market spine, small square, and short feeders to real front entrances.
+	for x in range(8, 23):
 		roads[Vector2i(x, 15)] = true
-	for y in range(14, 20):
-		roads[Vector2i(16, y)] = true
-	for x in range(11, 17):
-		roads[Vector2i(x, 18)] = true
-	for y in range(11, 16):
-		roads[Vector2i(19, y)] = true
-	roads[Vector2i(18, 11)] = true
-	for x in range(16, 22):
-		roads[Vector2i(x, 19)] = true
 	for x in range(15, 18):
 		for y in range(14, 17):
 			roads[Vector2i(x, y)] = true
-	roads.erase(Vector2i(16, 15)) # The well is a decorative landmark; traffic goes around it.
-	for cell in [Vector2i(13, 13), Vector2i(13, 14), Vector2i(14, 14), Vector2i(13, 16), Vector2i(13, 17), Vector2i(17, 14), Vector2i(7, 14), Vector2i(21, 14), Vector2i(21, 19)]:
+	roads.erase(Vector2i(16, 15))
+	for cell in [Vector2i(15, 13), Vector2i(18, 14), Vector2i(12, 18), Vector2i(13, 18), Vector2i(13, 17), Vector2i(13, 16), Vector2i(19, 11), Vector2i(8, 14), Vector2i(22, 14), Vector2i(17, 20), Vector2i(18, 20)]:
 		roads[cell] = true
+	for y in range(11, 15):
+		roads[Vector2i(20, y)] = true
+	for y in range(17, 21):
+		roads[Vector2i(16, y)] = true
 	_add_building("keep", Vector2i(13, 10), true)
 	_add_building("warehouse", Vector2i(17, 12), true)
 	_add_building("house", Vector2i(11, 16), true)
 	_add_building("house", Vector2i(18, 9), true)
 	_add_building("woodcutter", Vector2i(7, 12), true)
 	_add_building("sawmill", Vector2i(21, 12), true)
-	_add_building("farm", Vector2i(21, 17), true)
+	_add_building("farm", Vector2i(17, 18), true)
 	# Remove road cells covered by the initial buildings.
 	for b in buildings:
 		for cell in occupied_cells(b):
 			roads.erase(cell)
+	for cell in roads:
+		road_surfaces[cell] = "stone" if cell.x >= 13 and cell.x <= 19 and cell.y >= 11 and cell.y <= 17 else "dirt"
 	var names: Array[String] = ["艾伦", "玛莎", "威尔", "罗莎", "奥托", "艾达", "休", "安娜", "彼得", "莉娜", "汉斯", "梅芙", "卢卡", "诺拉", "芬恩", "艾拉", "托马", "露丝", "埃米", "保罗"]
 	for i in range(20):
 		var home_id: int = 3 if i < 10 else 4
 		citizens.append({"id": i + 1, "name": names[i], "home": home_id, "workplace": -1,
-			"pos": Vector2(14 + i % 3, 18), "direction": Vector2(1, 0), "state": "idle",
+			"pos": Vector2(16, 17 + i % 3), "direction": Vector2(1, 0), "state": "idle",
 			"route": [], "target": Vector2i(16, 15), "resume": "idle", "timer": float(i) * 0.3,
-			"cargo": {}, "cargo_role": "", "phase": float(i) * 0.5})
+			"cargo": {}, "cargo_role": "", "phase": float(i) * 0.5,
+			"appearance": i % 4, "activity": "rest"})
 	navigation_dirty = true
 	road_revision += 1
 	message = "欢迎来到橡木谷。工人正在上岗，资源交付后会增加库存。"
@@ -109,7 +109,7 @@ func _add_building(kind: String, cell: Vector2i, complete: bool) -> Dictionary:
 	var definition := Catalog.definition(kind)
 	var size: int = definition.size
 	var b := {"id": next_id, "kind": kind, "cell": cell, "size": size,
-		"entry": cell + Vector2i(0, size), "complete": complete, "progress": 0.0,
+		"entry": cell + Vector2i(size - 1, size), "complete": complete, "progress": 0.0,
 		"reserved": {} if complete else definition.cost.duplicate(), "delivered": {}, "claimed": -1, "level": 1}
 	next_id += 1
 	buildings.append(b)
@@ -131,7 +131,7 @@ func placement_error(kind: String, cell: Vector2i) -> String:
 		var entry: Vector2i = existing.entry
 		if entry.x >= cell.x and entry.y >= cell.y and entry.x < cell.x + size and entry.y < cell.y + size:
 			return "请留出相邻建筑的入口"
-	if not building_at(cell + Vector2i(0, size)).is_empty():
+	if not building_at(cell + Vector2i(size - 1, size)).is_empty():
 		return "建筑入口被遮挡"
 	for resource in definition.cost:
 		if inventory[resource] < definition.cost[resource]:
@@ -149,18 +149,27 @@ func place_building(kind: String, cell: Vector2i) -> int:
 	message = "%s已规划。材料已预留，请将入口接入道路。" % Catalog.definition(kind).name
 	return b.id
 
-func set_road(cell: Vector2i, present: bool) -> bool:
+func road_surface(cell: Vector2i) -> String:
+	return road_surfaces.get(cell, "dirt")
+
+func set_road(cell: Vector2i, present: bool, surface: String = "") -> bool:
 	if cell.x < 1 or cell.y < 1 or cell.x >= MAP_SIZE - 1 or cell.y >= MAP_SIZE - 1:
 		return false
 	if not building_at(cell).is_empty():
 		message = "道路不能穿过建筑"
 		return false
 	if roads.has(cell) == present:
+		if present and surface in ["stone", "dirt"] and road_surface(cell) != surface:
+			road_surfaces[cell] = surface
+			road_revision += 1
+			return true
 		return false
 	if present:
 		roads[cell] = true
+		road_surfaces[cell] = surface if surface in ["stone", "dirt"] else "dirt"
 	else:
 		roads.erase(cell)
+		road_surfaces.erase(cell)
 	navigation_dirty = true
 	road_revision += 1
 	for citizen in citizens:
@@ -205,6 +214,30 @@ func cycle_house_style(id: int) -> bool:
 	appearance_revision += 1
 	message = "住宅外观已更新，容量和生产规则不变。"
 	return true
+
+func cycle_resident_appearance(id: int) -> bool:
+	for c in citizens:
+		if c.id == id:
+			c.appearance = (int(c.get("appearance", int(c.id) - 1)) + 1) % 4
+			message = "居民形象已更新，职业与正在执行的任务保持不变。"
+			return true
+	return false
+
+func paint_road_segment(start: Vector2i, finish: Vector2i, surface: String) -> int:
+	# Interpolate fast brush drags so the route never skips cells between input events.
+	var cursor := start
+	var painted := 1 if set_road(cursor, true, surface) else 0
+	var limit := MAP_SIZE * 2
+	while cursor != finish and limit > 0:
+		limit -= 1
+		var difference := finish - cursor
+		if absi(difference.x) >= absi(difference.y) and difference.x != 0:
+			cursor.x += signi(difference.x)
+		else:
+			cursor.y += signi(difference.y)
+		if set_road(cursor, true, surface):
+			painted += 1
+	return painted
 
 func upgrade_keep() -> bool:
 	var keep := by_id(1)
@@ -356,6 +389,8 @@ func _step_citizen(c: Dictionary, delta: float) -> void:
 		if offset.length_squared() > 0.001:
 			c.direction = offset.normalized()
 		var walking_speed := 1.05 if c.cargo.is_empty() else 0.86
+		if c.state == "fetch_materials":
+			walking_speed = 1.45
 		c.pos = Vector2(c.pos).move_toward(waypoint, delta * walking_speed)
 		if Vector2(c.pos).distance_to(waypoint) < 0.005:
 			c.route.pop_front()
@@ -448,6 +483,18 @@ func _arrived(c: Dictionary) -> void:
 			else:
 				_begin_production(c, b)
 		"strolling", "homeward":
+			c.activity = "rest"
+			if c.state == "strolling":
+				c.activity = ["wave", "look", "rest", "rest"][int(c.id + int(time / 8.0)) % 4]
+				for neighbor in citizens:
+					if neighbor.id != c.id and neighbor.state == "resting" and Vector2(neighbor.pos).distance_to(c.pos) < 1.3:
+						c.activity = "chat"
+						neighbor.activity = "chat"
+						var toward: Vector2 = neighbor.pos - c.pos
+						if toward.length_squared() > 0.01:
+							c.direction = toward.normalized()
+							neighbor.direction = -toward.normalized()
+						break
 			c.state = "resting"
 
 func building_status(b: Dictionary) -> String:
@@ -473,6 +520,8 @@ func population_capacity() -> int:
 	return capacity
 
 func citizen_status(c: Dictionary) -> String:
+	if c.state == "resting":
+		return {"rest": "休息", "wave": "向邻居招手", "look": "查看随身物品", "chat": "和邻居交谈"}.get(c.get("activity", "rest"), "休息")
 	return {"idle": "寻找工作", "resting": "休息", "strolling": "在街区散步", "homeward": "回家休息",
 		"fetch_materials": "前往仓库取建材", "deliver_materials": "搬运建材", "constructing": "施工",
 		"fetch_input": "前往仓库取原木", "waiting_input": "等待原木", "to_work": "前往岗位",
@@ -482,7 +531,13 @@ func export_state() -> Dictionary:
 	return {"schema_version": SCHEMA, "layout_version": layout_version, "time": time, "seed": seed_value, "rng_state": str(rng.state),
 		"next_id": next_id, "deliveries": deliveries, "meal_timer": meal_timer,
 		"inventory": inventory.duplicate(true), "buildings": _encode(buildings), "citizens": _encode(citizens),
-		"roads": _encode(roads.keys())}
+		"roads": _encode(roads.keys()), "road_surfaces": _encode_surface_records()}
+
+func _encode_surface_records() -> Array:
+	var result: Array = []
+	for cell in roads:
+		result.append({"cell": _encode(cell), "surface": road_surface(cell)})
+	return result
 
 func _encode(value: Variant) -> Variant:
 	if value is Vector2i:
@@ -565,6 +620,10 @@ func import_state(data: Dictionary) -> bool:
 			return false
 		if c.pos.x < 0 or c.pos.y < 0 or c.pos.x >= MAP_SIZE or c.pos.y >= MAP_SIZE:
 			return false
+		if c.has("appearance") and not (c.appearance is int or c.appearance is float):
+			return false
+		if c.has("activity") and not c.activity in ["rest", "wave", "look", "chat"]:
+			return false
 		for point in c.route:
 			if not point is Vector2i:
 				return false
@@ -576,6 +635,20 @@ func import_state(data: Dictionary) -> bool:
 	roads.clear()
 	for cell in decoded_roads:
 		roads[cell] = true
+	road_surfaces.clear()
+	var surface_records: Variant = data.get("road_surfaces", [])
+	if not surface_records is Array or surface_records.size() > MAP_SIZE * MAP_SIZE:
+		return false
+	for record in surface_records:
+		if not record is Dictionary or not record.has("cell") or not record.get("surface", "") in ["stone", "dirt"] or not _valid_encoded(record.cell):
+			return false
+		var cell: Variant = _decode(record.cell)
+		if not cell is Vector2i or not roads.has(cell):
+			return false
+		road_surfaces[cell] = record.surface
+	for c in citizens:
+		c.appearance = posmod(int(c.get("appearance", int(c.id) - 1)), 4)
+		c.activity = c.get("activity", "rest")
 	if warehouse().is_empty() or by_id(1).get("kind", "") != "keep":
 		return false
 	inventory = _decode(data.inventory)

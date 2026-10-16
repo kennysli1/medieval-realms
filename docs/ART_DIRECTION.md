@@ -63,3 +63,7 @@
 ## 来源与许可
 
 截图仅为外链参考，不存入可发布游戏资源。正式资源逐项记录作者、来源、许可、修改和用途，见 assets/README.md。统一风格后再采购或生产资产。
+
+## 第三轮实装：路网与居民
+
+采用有授权记录的 [Poly Haven 材质](https://polyhaven.com/license) 与 [Quaternius 人物](https://quaternius.com/packs/ultimatemodularcharacters.html)。前者为连续等距地表，后者用统一相机与光照烘焙为 2D 精灵；四个角色在所有动作中保持服装和体型。低模人物与现有绘本建筑仍有细节密度差异，下一轮应继续统一轮廓、饱和度和专用职业动作。实际画面见 `screenshots/roads-and-residents.png`、`screenshots/resident-actions.png`。
