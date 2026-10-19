@@ -43,6 +43,8 @@ Windows 命令行（路径含空格请加引号）：
 
 ## 项目入口
 
+- [A 美术方向与二维资源管线调研交接（新对话入口）](docs/ART_A_PIPELINE_RESEARCH_HANDOFF.md)
+
 - [产品设计与首版范围](DEV_SPEC.md)
 - [画面方向与官方参考图](docs/ART_DIRECTION.md)
 - [架构与数据流](docs/ARCHITECTURE.md)
