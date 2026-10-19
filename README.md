@@ -11,6 +11,8 @@
 
 ## 开始
 
+二维动作试验（2026-10-19，尚未替换正式城镇）：双击 [居民演示](watch-resident-2d.bat) / [战斗演示](watch-battle-2d.bat)，可暂停、重播和切换。查看 [居民 GIF](docs/previews/resident-2d.gif)、[战斗 GIF](docs/previews/battle-2d.gif)，或 [居民 MP4](docs/previews/resident-2d.mp4)、[战斗 MP4](docs/previews/battle-2d.mp4)。这是原创二维图片驱动的动作可行性样片，背景为固定插画，不代表城建/战斗系统已完成。素材与制作方式见 [动作样片记录](assets/generated/pixel-proof/README.md)。
+
 使用 **Godot 4.7.2 Standard / GDScript** 导入根目录 `project.godot`，按 F5 运行项目。无需 Node、服务器或账号。当前电脑也可双击 `play.bat`；脚本会使用项目上一级目录的 Godot 4.7.2，其他电脑可设置 `GODOT_BIN` 或用编辑器打开。
 
 ## 可以玩什么

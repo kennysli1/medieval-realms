@@ -67,3 +67,9 @@
 ## 第三轮实装：路网与居民
 
 采用有授权记录的 [Poly Haven 材质](https://polyhaven.com/license) 与 [Quaternius 人物](https://quaternius.com/packs/ultimatemodularcharacters.html)。前者为连续等距地表，后者用统一相机与光照烘焙为 2D 精灵；四个角色在所有动作中保持服装和体型。低模人物与现有绘本建筑仍有细节密度差异，下一轮应继续统一轮廓、饱和度和专用职业动作。实际画面见 `screenshots/roads-and-residents.png`、`screenshots/resident-actions.png`。
+
+## 二维动作可行性试验 · 2026-10-19
+
+用户否定了几何体拼装的三维占位样片，转为检查开罗式二维资源生产是否可行。当前仅提交两个独立的动作试验，尚未确认全项目改为此风格：居民走路/搬木/挥斧；两名士兵交替挥剑、格挡、后仰与命中反馈。原创人物和固定背景由内置 imagegen 生成，完整原图及提示词见 `assets/generated/pixel-proof/`。
+
+按透明连通区域测量动作，保留完整武器和脚底锚点，Godot 原生采样播放。单个方向尚有帧间体积和步态差异；背景未拆成模块，未验证骑兵、多方向换装与大规模单位。GIF/MP4 是真实场景录制，不是概念图或视频模型生成。此前未发布的粗糙三维实验已移入本地忽略目录 `exports/rejected-3d-prototype-20261019/`，不纳入版本库。
